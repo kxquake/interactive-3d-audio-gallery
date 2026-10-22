@@ -1,25 +1,34 @@
-function showSection(sectionName) {
-    $('.content-section').hide();
-    $('#' + sectionName + '-section').fadeIn(300);
+window.showSection = function(sectionName) {
+    if (!['home', 'products', 'about'].includes(sectionName)) return;
+    if (sectionName !== 'products' && window.stopProductAudio) window.stopProductAudio();
+    $('.content-section').stop(true, true).hide();
+    $('#' + sectionName + '-section').fadeIn(300, function() {
+        if (sectionName === 'products' && window.resizeViewer) window.resizeViewer();
+    });
 
-    if (sectionName === 'about' && !window.aboutLoaded) {
+    if (sectionName === 'about' && !window.aboutLoaded && !window.aboutLoading) {
         loadAboutPage();
-        window.aboutLoaded = true;
     }
-}
-window.showSection = showSection;
 
-const originalLoadProduct = window.loadProduct;
-window.loadProduct = function(id) {
-    showSection('products');
-    if (originalLoadProduct) originalLoadProduct(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-
 function loadAboutPage() {
-    $.get('application/view/viewAbout.php', function(data) {
-        $('#about-content').html(data);
-    }).fail(function() {
-        $('#about-content').html('<p class="text-muted">About content unavailable offline. Run via local server.</p>');
-    });
+    window.aboutLoading = true;
+    $.get('application/view/viewAbout.php')
+        .done(function(data) {
+            $('#about-content').html(data);
+            window.aboutLoaded = true;
+            window.aboutLoading = false;
+        })
+        .fail(function() {
+            window.aboutLoading = false;
+            // about content needs PHP. show a hint if the page is opened directly without a server.
+            $('#about-content').html(
+                '<div class="alert alert-warning">' +
+                'About content requires a PHP server. ' +
+                'Run the project with PHP, then select About again to retry.' +
+                '</div>'
+            );
+        });
 }
